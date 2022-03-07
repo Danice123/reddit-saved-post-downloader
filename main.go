@@ -26,7 +26,7 @@ func client() *reddit.Client {
 		Secret:   os.Getenv("REDDIT_SCRIPT_SECRET"),
 		Username: os.Getenv("REDDIT_USERNAME"),
 		Password: os.Getenv("REDDIT_PASSWORD"),
-	})
+	}, reddit.WithUserAgent("golang:saved-post-download:v1.0.0 (by XxJewishRevengexX)"))
 	if err != nil {
 		panic(err)
 	}
