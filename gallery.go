@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -54,6 +55,9 @@ func HandleGallery(client *reddit.Client, postId string) (map[string]string, err
 		gallery, _ = getGenericChild(data.([]interface{})[0], "gallery_data")
 		gallery, _ = getGenericChild(gallery, "items")
 	} else {
+		if removed, ok := getGenericChild(data, "removed_by_category"); ok && removed != nil {
+			return nil, errors.New("removed gallery post")
+		}
 		images, _ = getGenericChild(data, "media_metadata")
 		gallery, _ = getGenericChild(data, "gallery_data")
 		gallery, _ = getGenericChild(gallery, "items")

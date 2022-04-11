@@ -81,7 +81,8 @@ func main() {
 			if strings.HasPrefix(post.URL, "https://www.reddit.com/gallery/") {
 				imageIds, err := HandleGallery(client, post.ID)
 				if err != nil {
-					panic(err)
+					println(err.Error())
+					continue
 				}
 
 				for name, u := range imageIds {
