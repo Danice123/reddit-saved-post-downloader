@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -41,9 +42,13 @@ func DownloadNamedFile(url string, path string, name string) error {
 	return curl.Run()
 }
 
+type RGAuth struct {
+	Token string
+}
+
 type RGResp struct {
-	Gif          *RGGif
-	ErrorMessage *RGError
+	Gif   *RGGif
+	Error *RGError
 }
 
 type RGGif struct {
@@ -56,18 +61,46 @@ type RGError struct {
 	Description string
 }
 
+var RGtoken string
+
 func DownloadRG(gifUrl string, path string) error {
+	if RGtoken == "" {
+		resp, err := http.Get("https://api.redgifs.com/v2/auth/temporary")
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		var r RGAuth
+		err = json.Unmarshal(body, &r)
+		if err != nil {
+			return err
+		}
+		RGtoken = r.Token
+	}
+
 	u, err := url.Parse(gifUrl)
 	if err != nil {
 		return err
 	}
 	tag := strings.TrimPrefix(u.Path, "/watch/")
 
-	resp, err := http.Get("https://api.redgifs.com/v2/gifs/" + tag)
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, "https://api.redgifs.com/v2/gifs/"+tag, nil)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	req.Header.Add("Authorization", "Bearer "+RGtoken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
@@ -79,10 +112,30 @@ func DownloadRG(gifUrl string, path string) error {
 		return err
 	}
 
-	if r.ErrorMessage != nil {
-		return fmt.Errorf("%s: %s", r.ErrorMessage.Description, gifUrl)
+	if r.Error != nil {
+		return fmt.Errorf("%s: %s", r.Error.Description, gifUrl)
 	}
 
 	hdurl := r.Gif.Urls["hd"]
-	return DownloadFile(hdurl, path)
+	return DownloadFile2(hdurl, filepath.Join(path, r.Gif.Id+".mp4"))
+}
+
+func DownloadFile2(url string, path string) error {
+	outfile, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer outfile.Close()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	_, err = io.Copy(outfile, resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
 }

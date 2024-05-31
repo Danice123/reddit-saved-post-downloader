@@ -45,6 +45,8 @@ func downloader(u string) func(u string, path string) error {
 		fallthrough
 	case "cdn-images.imagevenue.com":
 		fallthrough
+	case "files.catbox.moe":
+		fallthrough
 	case "i.imgur.com":
 		return DownloadFile
 
